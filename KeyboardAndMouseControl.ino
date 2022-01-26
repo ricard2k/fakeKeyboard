@@ -16,21 +16,27 @@
 
 unsigned long keyRetardTimer;
 unsigned int lineCounter;
-unsigned long activityTimer;
+unsigned long keyboardOrMouseTimer;
 boolean keyboardOrMouse;
 
-bool active;
+int status;
+bool ledStatus;
 
 //Activation button 
 bool lastButtonState;
 int debounceButton;
+unsigned long ledBlinkTimer;
 
 void newKeyRetardTimer() {
   keyRetardTimer =  millis() + (5 * random(100));
 }
 
-void newActivityTimer() {
-  activityTimer =  millis() + (1000 * random(36,89));
+void newKeyboardOrMouseTimer() {
+  keyboardOrMouseTimer =  millis() + (1000 * random(36,89));
+}
+
+void newLedBlinkTimer() {
+  ledBlinkTimer =  millis() + 200;
 }
 
 void setup() { 
@@ -47,17 +53,16 @@ void setup() {
   randomSeed(analogRead(0));
 
   // Variable initialization
-  active=false;
+  status=0;
   lineCounter = 0;
   keyRetardTimer=0;
   keyboardOrMouse=false;
-  activityTimer=0;
+  keyboardOrMouseTimer=0;
   
   debounceButton=0;
   lastButtonState=LOW;
-
-  // Set initial state for human feedback signals
-  digitalWrite(LED, active);
+  ledStatus=LOW;
+  ledBlinkTimer = 0;
   
 }
 
@@ -115,8 +120,8 @@ void readPushButton() {
   if (debounceButton > 10) {
     lastButtonState = buttonState;
     if (lastButtonState == HIGH) {
-      active = !active; 
-      digitalWrite(LED, active);
+      status = status == 2 ? 0 : status + 1; 
+      keyboardOrMouse = true; // set mouse by default
     }
   }
 }
@@ -125,11 +130,23 @@ void loop() {
 
   readPushButton();
 
-  if (active) { 
-    
-    if (activityTimer < millis()) { 
+  switch (status)
+  {
+  case 1:
+    digitalWrite(LED, HIGH);
+    mouseMove();
+    break;
+
+  case 2:
+    digitalWrite(LED, ledStatus);
+    if (ledBlinkTimer < millis()) {
+      ledStatus = !ledStatus;
+      newLedBlinkTimer();
+    }
+
+    if (keyboardOrMouseTimer < millis()) { 
       keyboardOrMouse = !keyboardOrMouse;
-      newActivityTimer();
+      newKeyboardOrMouseTimer();
     }
 
     if (keyboardOrMouse) {
@@ -137,6 +154,10 @@ void loop() {
     } else {
       mouseMove();
     }
-  }
-  
+    break;
+
+  default:
+    digitalWrite(LED, LOW);
+    break;
+  } 
 }
